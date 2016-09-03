@@ -47,7 +47,6 @@ object DecisionTree extends App {
     def log2(value: Double): Double = Math.log(value) / Math.log(2)
 
     // Reversed entropy
-    val information = outcome_counts.foldLeft(0.0)((l, r) => l - p(r._2)*log2(p(r._2)))
     val information_gains = data.head
       ._1
       .zipWithIndex
@@ -56,14 +55,27 @@ object DecisionTree extends App {
         .foldLeft(0.0)((l, r) => l - p(1) * r._2 * log2(r._2.toDouble / outcome_counts(r._1._2)))
       )
 
-//      val gini_indices = data(0)
-//        ._1
-//        .zipWithIndex
-//        .map(feature =>
-//          rPowerSet(data.map(row => row._1(feature._2)).toSet).map(comb =>
-//
-//          )
-//        )
+    def sqr(x: Double): Double = { x * x }
+    val gini_indices = DecisionTree.data.head
+      ._1
+      .zipWithIndex
+      .map(feature =>
+        cPowerSet(data.map(row => row._1(feature._2)).toSet).map(comb => {
+          val mult = data.count(row => comb._1.contains(row._1(feature._2))).toDouble / data.size
+          val multList = List(mult, 1 - mult)
+          List(comb._1, comb._2)
+            .map(combPart => {
+              val matching = data.filter(row => combPart.contains(row._1(feature._2)))
+              value_counts(matching
+                .map(row => row._1(feature._2) -> row._2))
+                .mapValues(count => count.toDouble / matching.size)
+            }
+              .foldLeft(1.0)((gini, prob) => gini - sqr(prob._2))
+            )
+            .zip(multList)
+            .foldLeft(0.0)((gini, listGini) => gini + listGini._2 * listGini._1)
+        })
+      )
 
 
     val index = information_gains.indexOf(information_gains.max)
@@ -96,9 +108,8 @@ object DecisionTree extends App {
   def getRules(tree: Map[Option[String], Any]): List[(List[String], Any)] = {
     tree.map(value => value._2 match {
       case string: String => (Nil -> value._2) :: Nil
-      case subtree: Map[Option[String], Map[Option[String], Any]] => {
+      case subtree: Map[Option[String], Map[Option[String], Any]] =>
         getRules(subtree).map(rule => (value._1.getOrElse("") :: rule._1) -> rule._2)
-      }
     }
     ).toList.flatten
   }
