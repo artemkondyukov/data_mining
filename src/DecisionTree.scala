@@ -9,15 +9,17 @@ object DecisionTree extends App {
     val Gini, InformationGain = Value
   }
 
+  val featureNames = Map(0 -> "height", 1 -> "hair", 2 -> "eyes")
+
   val data = List(
-    (List("small", "blonde", "brown"), "no"),
-    (List("tall",  "dark",   "brown"), "no"),
-    (List("tall",  "blonde", "blue"),  "yes"),
-    (List("tall",  "dark",   "blue"),  "no"),
-    (List("small", "dark",   "blue"),  "no"),
-    (List("tall",  "red",    "blue"),  "yes"),
-    (List("tall",  "blonde", "brown"), "no"),
-    (List("small", "blonde", "blue"),  "yes")
+    (List("small", "brown", "blonde"), "no"),
+    (List("tall",  "brown",   "dark"), "no"),
+    (List("tall",  "blue", "blonde"),  "yes"),
+    (List("tall",  "blue",   "dark"),  "no"),
+    (List("small", "blue",   "dark"),  "no"),
+    (List("tall",  "blue",    "red"),  "yes"),
+    (List("tall",  "brown", "blonde"), "no"),
+    (List("small", "blue", "blonde"),  "yes")
   )
 
   def value_counts[A](data: List[A]): Map[A, Int] = {
@@ -38,29 +40,36 @@ object DecisionTree extends App {
 
   // By now is returns Map[A, Any] where Any represents another map
   // TODO reimplement it using Tree class
-  def buildTree[A](data: List[(List[A], A)], objective: Objective): Map[Set[A], Any] = {
+  def buildTree[A](data: List[(List[A], A)], objective: Objective): Map[(Int, Set[A]), Any] = {
     if (data.isEmpty) throw new java.lang.IllegalArgumentException
 
     // How many different outcomes are and what's are their frequencies
     val outcome_counts = value_counts(data.map(_._2))
     if (outcome_counts.size == 1)
-      return Map((Set.empty[A], outcome_counts.toList.head._1))
+      return Map(((-1, Set.empty[A]), outcome_counts.toList.head._1))
 
     // There are no features to build tree on
-    if (data.head._1.isEmpty) return Map((Set.empty[A], outcome_counts.toList.head._1))
+    if (data.head._1.isEmpty) return Map(((-1, Set.empty[A]), outcome_counts.toList.head._1))
 
     // Shortcuts for probability and log2 functions
     def p(valAmount: Int) = valAmount.toDouble / data.length
     def log2(value: Double): Double = Math.log(value) / Math.log(2)
 
     // Reversed entropy
+    val information = outcome_counts.foldLeft(0.0)((l, r) => l - p(r._2)*log2(p(r._2)))
     val information_gains = data.head
       ._1
       .zipWithIndex
       .map(feature => value_counts(data.map(row => row._1(feature._2) -> row._2)))
+      .map(_.toList.groupBy(_._1._1))
       .map(_
-        .foldLeft(0.0)((l, r) => l - p(1) * r._2 * log2(r._2.toDouble / outcome_counts(r._1._2)))
-      )
+        .foldLeft(information)((info, r) => {
+          val amount = r._2.foldLeft(0)((am, tuple) => am + tuple._2)
+          val mult = amount.toDouble / data.length
+          def term(probability: Double): Double = { probability * log2(probability) }
+
+          info + mult * r._2.foldLeft(0.0)((acc, tuple) => acc + term(tuple._2.toDouble / amount))
+        }))
 
     def sqr(x: Double): Double = { x * x }
     val gini_indices: List[Set[((Set[A], Set[A]), Double)]] = data.head
@@ -74,7 +83,7 @@ object DecisionTree extends App {
             .map(combPart => {
               val matching = data.filter(row => combPart.contains(row._1(feature._2)))
               value_counts(matching
-                .map(row => row._1(feature._2) -> row._2))
+                .map(row => row._2))
                 .mapValues(count => count.toDouble / matching.size)
             }
               .foldLeft(1.0)((gini, prob) => gini - sqr(prob._2))
@@ -84,9 +93,10 @@ object DecisionTree extends App {
         })
       )
 
+    println("GINI: " + gini_indices + " GINI ")
     val maxGiniTuple = gini_indices.zipWithIndex
-      .map(set => set._1.toList.maxBy { _._2 } -> set._2)
-      .max(Ordering[Double].on[((_, Double), _)](_._1._2))
+      .map(set => set._1.toList.minBy { _._2 } -> set._2)
+      .min(Ordering[Double].on[((_, Double), _)](_._1._2))
     val giniSplit = maxGiniTuple._1._1 -> maxGiniTuple._2
 
     def dropIndex(index: Int)(list: List[A]) = list.take(index - 1) ++ list.takeRight(list.length - index - 1)
@@ -98,7 +108,7 @@ object DecisionTree extends App {
           .map(row => row._1(index))
           .distinct
           .map(
-            value => Set(value) -> buildTree(
+            value => (index, Set(value)) -> buildTree(
               data
                 .filter(row => row._1(index) == value)
                 .map(row => dropIndex(index)(row._1) -> row._2),
@@ -109,7 +119,7 @@ object DecisionTree extends App {
       case Objective.Gini => {
         val feature_subtrees = List(giniSplit._1._1, giniSplit._1._2)
           .map(
-            value => value -> buildTree(
+            value => (giniSplit._2, value) -> buildTree(
              data
                 .filter(row => value.contains(row._1(giniSplit._2)))
                 .map(row => value.size match {
@@ -126,34 +136,34 @@ object DecisionTree extends App {
   }
 
   // TODO rewrite in functional fashion
-  def printTree(tree: Map[Set[String], Any], tabs: Int = 0): Unit = {
+  def printTree(tree: Map[(Int, Set[String]), Any], tabs: Int = 0): Unit = {
     tree.toList.foreach(value => {
 //      value._1.foreach(node => println("\t" * tabs + node))
-      value._1.size match {
+      value._1._2.size match {
         case 0 =>
-        case len =>  println ("\t" * tabs + value._1.mkString (", ") )
+        case len =>  println ("\t" * tabs + value._1._2.mkString (", ") )
       }
       value._2 match {
         case s: String => println("\t" * tabs + s)
-        case map: Map[Set[String], Any] => printTree(map, tabs+1)
+        case map: Map[(Int, Set[String]), Any] => printTree(map, tabs+1)
       }
     })
   }
 
-  def getRules(tree: Map[Set[String], Any]): List[(List[List[String]], Any)] = {
+  def getRules(tree: Map[(Int, Set[String]), Any]): List[(List[(Int, List[String])], Any)] = {
     tree.map(value => value._2 match {
       case string: String => (Nil -> value._2) :: Nil
-      case subtree: Map[Set[String], Map[Set[String], Any]] =>
-        getRules(subtree).map(rule => (value._1.toList :: rule._1) -> rule._2)
+      case subtree: Map[(Int, Set[String]), Map[(Int, Set[String]), Any]] =>
+        getRules(subtree).map(rule => (value._1._1 -> value._1._2.toList :: rule._1) -> rule._2)
     }
     ).toList.flatten
   }
 
-  def getRuleAccuracy(tree: Map[Set[String], Any], rule: List[List[String]]): Double = {
+  def getRuleAccuracy(tree: Map[Set[String], Any], rule: List[(Int, List[String])]): Double = {
+    println(rule)
     val satisfying = rule
-      .zipWithIndex
       .foldLeft(data)((intermediate, rulePart) =>
-        intermediate.filter(row => rulePart._1.contains(row._1(rulePart._2))))
+        intermediate.filter(row => rulePart._2.contains(row._1(rulePart._1))))
     value_counts(satisfying.map(_._2)).values
       .max
       .toDouble / satisfying.length
@@ -165,8 +175,9 @@ object DecisionTree extends App {
   printTree(decisionTreeInfoGain)
   println("\nRules: ")
   val rules = getRules(decisionTreeInfoGain)
+  rules foreach println
 //  val acc = getRuleAccuracy(decisionTree, List("small", "blonde", "brown"))
-  rules.foreach(rule => print(rule + ". Accuracy: " + getRuleAccuracy(decisionTreeInfoGain, rule._1) + "\n"))
+//  rules.foreach(rule => print(rule + ". Accuracy: " + getRuleAccuracy(decisionTreeInfoGain, rule._1) + "\n"))
 
   val decisionTreeGini = buildTree(data, Objective.Gini)
   println("Tree using Gini: ")
