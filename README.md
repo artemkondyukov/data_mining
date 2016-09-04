@@ -1,5 +1,19 @@
 ## Assignment 1 for the Data Mining course
-This is the implementation of _DecisionTree_ builder using either Gini index or information gain as splitting criteria.
+src/Apriori.scala is the first two tasks of the assignment  
+It produces the following output:  
+Itemsets:   
+(List(B),5)  
+(List(A, C),2)  
+(List(D),2)  
+(List(B, C),4)  
+(List(C),4)  
+(List(B, D),2)  
+(List(E),2)  
+(List(A),2)  
+(List(A, B),2)  
+B -> C confidence: 0.8  
+
+src/DecisionTree.scala is the implementation of _DecisionTree_ builder using either Gini index or information gain as splitting criteria.
 
 Using sample data _IG_ criterion gives the following tree:  
 root  
