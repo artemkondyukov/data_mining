@@ -28,13 +28,10 @@ root
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;yes
 
 And the following *rules*:
-* (List(List(small), List(blonde), List(brown),no). Accuracy: 1.0
-* (List(List(small), List(blonde), List(blue)),yes). Accuracy: 1.0
-* (List(List(small), List(dark)),no). Accuracy: 1.0
-* (List(List(tall), List(dark)),no). Accuracy: 1.0
-* (List(List(tall), List(blonde), List(blue)),yes). Accuracy: 1.0
-* (List(List(tall), List(blonde), List(brown)),no). Accuracy: 1.0
-* (List(List(tall), List(red)),yes). Accuracy: 1.0
+* (List(List(blonde), List(brown),no). Accuracy: 1.0
+* (List(List(blonde), List(blue),yes). Accuracy: 1.0
+* (List(List(red)),yes). Accuracy: 1.0
+* (List(List(dark)),no). Accuracy: 1.0
 
 
 Using sample data _Gini_ criterion gives the following tree:  
