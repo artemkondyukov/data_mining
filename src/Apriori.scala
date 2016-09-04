@@ -21,13 +21,14 @@ object Apriori extends App {
       case Nil => items.map(item => List(item)).toList
       case list => accumulator.flatMap(itemset => items.map(_ :: itemset._1))
     }
+
     val filtered = acc_next
       .map(list => list -> transactions.count(_._2.intersect(list) == list) )
       .filter(_._2 >= min_support)
 
     if (filtered.isEmpty)
       return Nil
-    accumulator ::: frequent_itemsets(transactions, filtered)
+    filtered ::: frequent_itemsets(transactions, filtered)
   }
 
   val itemsets = frequent_itemsets(transactions).toMap
