@@ -11,6 +11,7 @@ Itemsets:
 (List(E),2)  
 (List(A),2)  
 (List(A, B),2)  
+(List(A, B, C), 2)  
 B -> C confidence: 0.8  
 
 src/DecisionTree.scala is the implementation of _DecisionTree_ builder using either Gini index or information gain as splitting criteria.
