@@ -93,7 +93,6 @@ object DecisionTree extends App {
         })
       )
 
-    println("GINI: " + gini_indices + " GINI ")
     val maxGiniTuple = gini_indices.zipWithIndex
       .map(set => set._1.toList.minBy { _._2 } -> set._2)
       .min(Ordering[Double].on[((_, Double), _)](_._1._2))
